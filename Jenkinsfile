@@ -1,51 +1,52 @@
+
 pipeline {
     agent any
 
     stages {
         stage('Checkout') {
             steps {
-                echo 'Getting source code'
+                checkout scm
+                echo 'Source code retrieved from GitHub'
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Building static website'
-                bat 'if not exist dist mkdir dist'
-                bat 'copy index.html dist\\index.html'
-                bat 'copy style.css dist\\style.css'
-                bat 'copy script.js dist\\script.js'
+                sh 'mkdir -p dist'
+                sh 'cp index.html style.css script.js dist/'
+                echo 'Website files copied to dist'
             }
         }
 
         stage('Test') {
             steps {
-                bat 'if exist dist\\index.html (echo HTML file exists) else (exit /b 1)'
-                bat 'if exist dist\\style.css (echo CSS file exists) else (exit /b 1)'
-                bat 'if exist dist\\script.js (echo JavaScript file exists) else (exit /b 1)'
+                sh 'test -s dist/index.html'
+                sh 'test -s dist/style.css'
+                sh 'test -s dist/script.js'
+                echo 'All required files exist'
             }
         }
 
         stage('Quality Check') {
             steps {
-                bat 'findstr /C:"<html" index.html'
-                bat 'findstr /C:"<script" index.html'
-                echo 'Basic quality checks completed'
+                sh 'grep -qi "<html" index.html'
+                sh 'grep -q "script.js" index.html'
+                echo 'Basic quality checks passed'
             }
         }
 
         stage('Package') {
             steps {
-                powershell 'Compress-Archive -Path dist\\* -DestinationPath website.zip -Force'
+                sh 'jar --create --file website.zip -C dist .'
                 archiveArtifacts artifacts: 'website.zip', fingerprint: true
             }
         }
 
         stage('Deploy') {
             steps {
-                bat 'if not exist deploy mkdir deploy'
-                bat 'copy website.zip deploy\\website.zip'
-                echo 'Deployment package copied to deploy directory'
+                sh 'mkdir -p deploy'
+                sh 'cp website.zip deploy/website.zip'
+                echo 'Package copied to deploy directory'
             }
         }
     }
